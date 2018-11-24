@@ -1,15 +1,16 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
- 
+#include <math.h>
 #define SLOTS 10
 #define MAX_PROD 4
 #define MAX_CONS 4
  
-pthread_mutex_t mutex;//allow access to buffer one thread at a time
-sem_t empty;//block consumers from accessing buffer when buffer is empty
-sem_t full;//block producers from accessing buffer when buffer is full
+pthread_mutex_t mutex; //allow access to buffer one thread at a time
+sem_t empty; //block consumers from accessing buffer when buffer is empty
+sem_t full; //block producers from accessing buffer when buffer is full
 volatile int global = 0;
  
 int buffer[SLOTS] = {0};//set to 0, no item available, else one item is available
@@ -20,18 +21,25 @@ int increment(int variable)
     return variable + 1;
 }
  
+int produire(){
+    return (rand()% SLOTS)+1;
+} 
+
 void *produce(void* args)
 {
     while(1){
-        sem_wait(&empty);//producer must wait until one slot is empty
+        sem_wait(&empty); //producer must wait until one slot is empty
         //insertion
         for(size_t i = 0; i < SLOTS; i++){
             if(buffer[i] == 0){
-                pthread_mutex_lock(&mutex);//lock global and buffer
+                //lock global and buffer
+                pthread_mutex_lock(&mutex);
                 global = increment(global);
-                printf("I added %d to the buffer\n", global);
-                buffer[i] = global;
-                pthread_mutex_unlock(&mutex);//unlock global and buffer
+                buffer[i] = produire();
+                printf("I added %d to the buffer\n",buffer[i]);
+                
+                pthread_mutex_unlock(&mutex);
+                //unlock global and buffer
                 //break;
             }
         }
@@ -53,7 +61,7 @@ void *consume(void* args)
              
             if(buffer[i] > 0){
                 pthread_mutex_lock(&mutex);
-                printf("Yum yum I had %d for dinner\n", buffer[i]);
+                printf("I've just consumed %d \n", buffer[i]);
                 buffer[i] = 0;
                 pthread_mutex_unlock(&mutex);
                 //break;
@@ -75,9 +83,8 @@ int main(int argc, char *argv[])
     //initialize semaphore for full slots
     //upon start up the buffer is empty
     //consumer may therefore NOT extract data
-    if(sem_init(&empty, 0, SLOTS) || sem_init(&full, 0, 0)){
-        perror("");
-    }
+    sem_init(&empty, 0, SLOTS);
+    sem_init(&full, 0, 0);
  
     //init consumer thread
     //init producer thread
@@ -109,9 +116,10 @@ int main(int argc, char *argv[])
     }
  
     //destroy semaphores
-    if(sem_destroy(&full) || sem_destroy(&empty)){
-        perror("");
-    }
+    sem_destroy(&full);
+    sem_destroy(&empty);
+        
+    
  
     return 0;
 }
