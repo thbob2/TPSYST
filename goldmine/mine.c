@@ -40,6 +40,7 @@ void *achteur(){
 		//V(mutex)
 		pthread_mutex_unlock(&caisse);
 		sem_post(&achat);
+		
 	}else{pthread_mutex_unlock(&caisse);}
 
 
